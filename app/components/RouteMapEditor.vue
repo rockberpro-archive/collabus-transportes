@@ -41,7 +41,11 @@
               <UIcon name="i-lucide-map-pin" class="text-primary-500" />
               <span class="text-sm font-medium text-gray-900 dark:text-white">{{ stops.length }} paradas</span>
             </div>
-            <div v-if="totalDistance > 0" class="flex items-center gap-2">
+            <div v-if="loadingRoute" class="flex items-center gap-2">
+              <UIcon name="i-lucide-loader-2" class="animate-spin text-blue-500" />
+              <span class="text-sm font-medium text-gray-900 dark:text-white">Calculando rota...</span>
+            </div>
+            <div v-else-if="totalDistance > 0" class="flex items-center gap-2">
               <UIcon name="i-lucide-route" class="text-green-500" />
               <span class="text-sm font-medium text-gray-900 dark:text-white">{{ formatDistance(totalDistance) }}</span>
             </div>
@@ -111,7 +115,10 @@ const { fetchRouteStops, saveRouteStops } = useRouteStops()
 
 const mapContainer = ref<HTMLElement | null>(null)
 const stops = ref<Array<{ id: string; name: string; lat: number; lng: number; order: number }>>([])
+const routeGeometry = ref<number[][]>([])
+const actualDistance = ref(0)
 const saving = ref(false)
+const loadingRoute = ref(false)
 
 let map: maptilerSdk.Map | null = null
 let markers: maptilerSdk.Marker[] = []
@@ -123,18 +130,7 @@ const mapHeight = computed(() => {
 })
 
 const totalDistance = computed(() => {
-  if (stops.value.length < 2) return 0
-  
-  let distance = 0
-  for (let i = 0; i < stops.value.length - 1; i++) {
-    const stop1 = stops.value[i]
-    const stop2 = stops.value[i + 1]
-    if (stop1 && stop2) {
-      distance += calculateDistance(stop1.lat, stop1.lng, stop2.lat, stop2.lng)
-    }
-  }
-  
-  return distance
+  return actualDistance.value
 })
 
 const formatDistance = (meters: number) => {
@@ -144,7 +140,100 @@ const formatDistance = (meters: number) => {
   return `${(meters / 1000).toFixed(2)}km`
 }
 
-// Haversine formula para calcular distância entre dois pontos
+// Buscar geometria da rota seguindo as ruas usando OSRM (Open Source Routing Machine)
+const fetchRouteGeometry = async () => {
+  if (stops.value.length < 2) {
+    routeGeometry.value = []
+    actualDistance.value = 0
+    return
+  }
+
+  loadingRoute.value = true
+  
+  try {
+    const allCoordinates: number[][] = []
+    let totalDist = 0
+
+    // Para cada par consecutivo de paradas, buscar rota
+    for (let i = 0; i < stops.value.length - 1; i++) {
+      const start = stops.value[i]
+      const end = stops.value[i + 1]
+
+      if (!start || !end) continue
+
+      // Usar OSRM (Open Source Routing Machine) - serviço gratuito e rápido
+      // Formato: lng,lat;lng,lat
+      const coords = `${start.lng},${start.lat};${end.lng},${end.lat}`
+      const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
+
+      const response = await fetch(url)
+      
+      if (!response.ok) {
+        console.error('OSRM API error:', response.status)
+        // Fallback para linha reta em caso de erro
+        if (i === 0) {
+          allCoordinates.push([start.lng, start.lat])
+        }
+        allCoordinates.push([end.lng, end.lat])
+        continue
+      }
+
+      const data = await response.json()
+
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0]
+        
+        // Adicionar distância do segmento (vem em metros)
+        totalDist += route.distance || 0
+
+        // Extrair geometria (GeoJSON format)
+        if (route.geometry && route.geometry.coordinates) {
+          const coordinates = route.geometry.coordinates
+
+          // Adicionar coordenadas evitando duplicatas nos pontos de conexão
+          if (i === 0) {
+            allCoordinates.push(...coordinates)
+          } else {
+            // Pular primeira coordenada pois é igual à última do segmento anterior
+            allCoordinates.push(...coordinates.slice(1))
+          }
+        } else {
+          // Fallback: linha reta
+          if (i === 0) {
+            allCoordinates.push([start.lng, start.lat])
+          }
+          allCoordinates.push([end.lng, end.lat])
+        }
+      } else {
+        // Sem rotas disponíveis - usar linha reta
+        if (i === 0) {
+          allCoordinates.push([start.lng, start.lat])
+        }
+        allCoordinates.push([end.lng, end.lat])
+      }
+    }
+
+    routeGeometry.value = allCoordinates
+    actualDistance.value = totalDist
+
+  } catch (error) {
+    console.error('Error fetching route geometry:', error)
+    
+    // Fallback para linha reta em caso de erro
+    routeGeometry.value = stops.value.map(stop => [stop.lng, stop.lat])
+    actualDistance.value = 0
+    
+    toast.add({
+      title: 'Aviso',
+      description: 'Não foi possível traçar rota pelas ruas. Usando linha reta.',
+      color: 'warning',
+    })
+  } finally {
+    loadingRoute.value = false
+  }
+}
+
+// Haversine formula para calcular distância entre dois pontos (mantido para fallback)
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371e3 // Raio da Terra em metros
   const φ1 = lat1 * Math.PI / 180
@@ -215,6 +304,17 @@ const initMap = async () => {
           lng: stop.longitude,
           order: stop.order,
         }))
+        
+        // Se já tiver geoJson salvo, usar ele
+        if (data.geoJson && data.geoJson.coordinates && data.geoJson.coordinates.length > 0) {
+          routeGeometry.value = data.geoJson.coordinates
+          // Calcular distância aproximada se não tiver
+          actualDistance.value = 0
+        } else {
+          // Senão, buscar nova geometria
+          await fetchRouteGeometry()
+        }
+        
         updateMap()
         fitBounds()
       }
@@ -230,7 +330,7 @@ const initMap = async () => {
   })
 }
 
-const addStop = (lat: number, lng: number, name?: string) => {
+const addStop = async (lat: number, lng: number, name?: string) => {
   const order = stops.value.length
   const stopName = name || `Parada ${order + 1}`
   
@@ -244,9 +344,11 @@ const addStop = (lat: number, lng: number, name?: string) => {
   
   stops.value.push(newStop)
   updateMap()
+  await fetchRouteGeometry()
+  updateLine()
 }
 
-const removeStop = (stopId: string) => {
+const removeStop = async (stopId: string) => {
   const index = stops.value.findIndex(s => s.id === stopId)
   if (index === -1) return
   
@@ -258,6 +360,8 @@ const removeStop = (stopId: string) => {
   })
   
   updateMap()
+  await fetchRouteGeometry()
+  updateLine()
 }
 
 const editStopName = (stopId: string, newName: string) => {
@@ -304,10 +408,12 @@ const updateMap = () => {
       .addTo(map!)
 
     // Evento de arrastar
-    marker.on('dragend', () => {
+    marker.on('dragend', async () => {
       const lngLat = marker.getLngLat()
       stop.lat = lngLat.lat
       stop.lng = lngLat.lng
+      // Recalcular rota após arrastar
+      await fetchRouteGeometry()
       updateLine()
     })
 
@@ -326,7 +432,10 @@ const updateMap = () => {
 const updateLine = () => {
   if (!map) return
 
-  const coordinates = stops.value.map(stop => [stop.lng, stop.lat])
+  // Usar routeGeometry se disponível, senão usar coordenadas diretas dos stops
+  const coordinates = routeGeometry.value.length > 0 
+    ? routeGeometry.value 
+    : stops.value.map(stop => [stop.lng, stop.lat])
   
   const source = map.getSource('route-line') as any
   if (source) {
@@ -433,7 +542,10 @@ const handleSave = async () => {
   saving.value = true
 
   try {
-    const coordinates = stops.value.map(stop => [stop.lng, stop.lat])
+    // Usar geometria snapped se disponível, senão usar coordenadas diretas
+    const coordinates = routeGeometry.value.length > 0 
+      ? routeGeometry.value 
+      : stops.value.map(stop => [stop.lng, stop.lat])
     
     const geoJson: GeoJSON.LineString = {
       type: 'LineString',
@@ -489,6 +601,8 @@ watch(() => props.isOpen, (newValue) => {
       map = null
     }
     stops.value = []
+    routeGeometry.value = []
+    actualDistance.value = 0
   }
 })
 
