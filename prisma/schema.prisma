@@ -77,12 +77,14 @@ model Route {
   destination String
   state       String
   city        String
+  geoJson     Json?
   isActive    Boolean        @default(true)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   schedules   Schedule[]
   vehicles    RouteVehicle[]
   drivers     RouteDriver[]
+  stops       Stop[]
 
   @@map("routes")
 }
@@ -156,4 +158,18 @@ model RouteDriver {
 
   @@unique([routeId, driverId])
   @@map("route_drivers")
+}
+
+model Stop {
+  id        String   @id @default(cuid())
+  name      String
+  latitude  Float
+  longitude Float
+  order     Int
+  routeId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@map("stops")
 }

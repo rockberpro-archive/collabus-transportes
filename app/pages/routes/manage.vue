@@ -135,6 +135,14 @@
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex justify-end gap-3 items-center">
                     <UButton
+                      icon="i-lucide-map"
+                      size="xl"
+                      color="primary"
+                      variant="ghost"
+                      @click="openMapEditor(route)"
+                      title="Plotar Rota"
+                    />
+                    <UButton
                       icon="i-lucide-user-check"
                       size="xl"
                       color="secondary"
@@ -226,6 +234,16 @@
             </div>
 
             <div class="flex flex-col gap-2">
+              <UButton
+                icon="i-lucide-map"
+                size="lg"
+                color="primary"
+                variant="ghost"
+                class="w-full"
+                @click="openMapEditor(route)"
+              >
+                Plotar Rota
+              </UButton>
               <UButton
                 icon="i-lucide-user-check"
                 size="lg"
@@ -587,6 +605,14 @@
         </template>
       </UCard>
     </div>
+
+    <!-- Modal Plotar Rota -->
+    <RouteMapEditor
+      :is-open="showMapEditor"
+      :route="selectedRoute"
+      @close="handleMapEditorClose"
+      @saved="handleMapEditorSaved"
+    />
   </div>
 </template>
 
@@ -634,6 +660,7 @@ const statusOptions = [
 const showAddModal = ref(false)
 const showVehiclesModal = ref(false)
 const showDriversModal = ref(false)
+const showMapEditor = ref(false)
 const selectedRoute = ref<Route | null>(null)
 
 const newRoute = reactive({
@@ -800,6 +827,20 @@ const handleUnassignDriver = async (driverId: string) => {
 const isDriverAssigned = (driverId: string): boolean => {
   if (!selectedRoute.value?.drivers) return false
   return selectedRoute.value.drivers.some(rd => rd.driver.id === driverId)
+}
+
+const openMapEditor = (route: Route) => {
+  selectedRoute.value = route
+  showMapEditor.value = true
+}
+
+const handleMapEditorClose = () => {
+  showMapEditor.value = false
+  selectedRoute.value = null
+}
+
+const handleMapEditorSaved = async () => {
+  await loadRoutes()
 }
 
 onMounted(async () => {
