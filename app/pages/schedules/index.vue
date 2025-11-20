@@ -204,13 +204,12 @@
     
     <!-- Modal do Mapa -->
     <RouteMapViewer
-      v-if="selectedRoute"
       :is-open="showMapViewer"
-      :route-id="selectedRoute.id"
-      :route-code="selectedRoute.code || 'N/A'"
-      :origin="selectedRoute.origin || 'N/A'"
-      :destination="selectedRoute.destination || 'N/A'"
-      @close="showMapViewer = false"
+      :route-id="selectedRoute?.id || null"
+      :route-code="selectedRoute?.code || 'N/A'"
+      :origin="selectedRoute?.origin || 'N/A'"
+      :destination="selectedRoute?.destination || 'N/A'"
+      @close="closeMapViewer"
     />
   </div>
 </template>
@@ -364,5 +363,10 @@ function openMapViewer(routeId: string) {
     selectedRoute.value = schedule.route
     showMapViewer.value = true
   }
+}
+
+function closeMapViewer() {
+  showMapViewer.value = false
+  selectedRoute.value = null
 }
 </script>

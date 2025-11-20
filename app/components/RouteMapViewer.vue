@@ -73,7 +73,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onUnmounted, watch, nextTick } from 'vue'
 import * as maptilerSdk from '@maptiler/sdk'
 import '@maptiler/sdk/dist/maptiler-sdk.css'
 import { useRouteStops } from '~/composables/useRouteStops'
@@ -264,11 +264,14 @@ const handleClose = () => {
   emit('close')
 }
 
-watch(() => props.isOpen, (newValue) => {
-  if (newValue && !map) {
+watch(() => props.isOpen, async (newValue) => {
+  if (newValue && !map && props.routeId) {
+    // Use nextTick to ensure DOM is fully rendered
+    await nextTick()
+    // Additional small delay to ensure map container is ready
     setTimeout(() => {
       initMap()
-    }, 100)
+    }, 150)
   } else if (!newValue && map) {
     markers.forEach(marker => marker.remove())
     markers = []
@@ -278,6 +281,26 @@ watch(() => props.isOpen, (newValue) => {
     }
     stops.value = []
     distance.value = 0
+  }
+})
+
+// Watch for routeId changes when modal is already open
+watch(() => props.routeId, async (newRouteId, oldRouteId) => {
+  if (props.isOpen && newRouteId && newRouteId !== oldRouteId) {
+    // Clean up existing map
+    if (map) {
+      markers.forEach(marker => marker.remove())
+      markers = []
+      map.remove()
+      map = null
+      stops.value = []
+      distance.value = 0
+    }
+    // Reinitialize with new route
+    await nextTick()
+    setTimeout(() => {
+      initMap()
+    }, 150)
   }
 })
 
