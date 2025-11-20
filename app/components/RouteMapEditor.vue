@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-0 sm:p-4" @click="handleCancel">
+  <div v-if="isOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-0 sm:p-4">
     <div class="w-full h-full sm:max-w-[95vw] sm:max-h-[95vh] sm:rounded-lg overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl flex flex-col" @click.stop>
       <!-- Header -->
       <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-800 shrink-0">
@@ -9,11 +9,59 @@
             {{ route?.code || 'Sem código' }} - {{ route?.origin }} → {{ route?.destination }}
           </p>
         </div>
+        <UPopover v-if="stops.length > 0" v-model:open="showHeaderPopover" :content="{ align: 'end' }">
+          <UButton
+            icon="i-lucide-x"
+            variant="ghost"
+            color="neutral"
+          />
+          
+          <template #content="{ close }">
+            <div class="p-4 w-80">
+              <div class="flex items-start gap-3 mb-4">
+                <div class="shrink-0">
+                  <div class="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                    <UIcon name="i-lucide-alert-triangle" class="text-xl text-amber-600 dark:text-amber-400" />
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <h4 class="font-semibold text-gray-900 dark:text-white mb-1">
+                    Descartar alterações?
+                  </h4>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Você tem {{ stops.length }} parada{{ stops.length !== 1 ? 's' : '' }} plotada{{ stops.length !== 1 ? 's' : '' }} que serão perdidas.
+                  </p>
+                </div>
+              </div>
+              
+              <div class="flex gap-2">
+                <UButton
+                  variant="ghost"
+                  size="sm"
+                  class="flex-1"
+                  @click="close"
+                >
+                  Cancelar
+                </UButton>
+                <UButton
+                  color="error"
+                  size="sm"
+                  class="flex-1"
+                  @click="confirmClose"
+                  icon="i-lucide-trash-2"
+                >
+                  Descartar
+                </UButton>
+              </div>
+            </div>
+          </template>
+        </UPopover>
         <UButton
+          v-else
           icon="i-lucide-x"
           variant="ghost"
           color="neutral"
-          @click="handleCancel"
+          @click="emit('close')"
         />
       </div>
 
@@ -65,10 +113,60 @@
         </div>
         
         <div class="flex gap-2 w-full sm:w-auto">
+          <UPopover v-if="stops.length > 0" v-model:open="showFooterPopover" :content="{ align: 'end', side: 'top' }">
+            <UButton
+              variant="ghost"
+              class="flex-1 sm:flex-initial"
+              :disabled="saving || loadingRoute"
+            >
+              Cancelar
+            </UButton>
+            
+            <template #content="{ close }">
+              <div class="p-4 w-80">
+                <div class="flex items-start gap-3 mb-4">
+                  <div class="shrink-0">
+                    <div class="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                      <UIcon name="i-lucide-alert-triangle" class="text-xl text-amber-600 dark:text-amber-400" />
+                    </div>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="font-semibold text-gray-900 dark:text-white mb-1">
+                      Descartar alterações?
+                    </h4>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                      Você tem {{ stops.length }} parada{{ stops.length !== 1 ? 's' : '' }} plotada{{ stops.length !== 1 ? 's' : '' }} que serão perdidas.
+                    </p>
+                  </div>
+                </div>
+                
+                <div class="flex gap-2">
+                  <UButton
+                    variant="ghost"
+                    size="sm"
+                    class="flex-1"
+                    @click="close"
+                  >
+                    Voltar
+                  </UButton>
+                  <UButton
+                    color="error"
+                    size="sm"
+                    class="flex-1"
+                    @click="confirmClose"
+                    icon="i-lucide-trash-2"
+                  >
+                    Descartar
+                  </UButton>
+                </div>
+              </div>
+            </template>
+          </UPopover>
           <UButton
+            v-else
             variant="ghost"
             class="flex-1 sm:flex-initial"
-            @click="handleCancel"
+            @click="emit('close')"
             :disabled="saving || loadingRoute"
           >
             Cancelar
@@ -121,6 +219,8 @@ const routeGeometry = ref<number[][]>([])
 const actualDistance = ref(0)
 const saving = ref(false)
 const loadingRoute = ref(false)
+const showHeaderPopover = ref(false)
+const showFooterPopover = ref(false)
 
 let map: maptilerSdk.Map | null = null
 let markers: maptilerSdk.Marker[] = []
@@ -521,12 +621,9 @@ const fitBounds = () => {
   map.fitBounds(bounds, { padding: 100 })
 }
 
-const handleCancel = () => {
-  if (stops.value.length > 0) {
-    const confirmed = confirm('Tem certeza que deseja fechar? Para salvar a rota, clique no botão "Salvar Rota" no rodapé.')
-    if (!confirmed) return
-  }
-  
+const confirmClose = () => {
+  showHeaderPopover.value = false
+  showFooterPopover.value = false
   emit('close')
 }
 
