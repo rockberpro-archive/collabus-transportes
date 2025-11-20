@@ -5,8 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Collabus',
   webDir: '.output/public',
   server: {
-    url: 'http://192.168.144.124:3000',
-    cleartext: true
+    url: 'http://192.168.144.124:3000/',
+    cleartext: true,
+    androidScheme: 'http'
   }
 };
 

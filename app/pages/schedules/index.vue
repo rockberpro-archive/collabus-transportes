@@ -97,6 +97,9 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Horários
                 </th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -124,6 +127,17 @@
                   <div class="text-sm text-gray-600 dark:text-gray-400">
                     {{ formatTimes(schedule.times) }}
                   </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right">
+                  <UButton
+                    v-if="schedule.route?.id"
+                    icon="i-lucide-map"
+                    size="sm"
+                    variant="ghost"
+                    @click="openMapViewer(schedule.route.id)"
+                  >
+                    Ver Rota
+                  </UButton>
                 </td>
               </tr>
             </tbody>
@@ -154,6 +168,18 @@
                 <span class="wrap-break-word">{{ formatTimes(schedule.times) }}</span>
               </div>
             </div>
+            
+            <div v-if="schedule.route?.id" class="mt-3">
+              <UButton
+                icon="i-lucide-map"
+                size="sm"
+                variant="ghost"
+                block
+                @click="openMapViewer(schedule.route.id)"
+              >
+                Ver Rota no Mapa
+              </UButton>
+            </div>
           </div>
         </div>
       </div>
@@ -175,6 +201,16 @@
         </UButton>
       </div>
     </div>
+    
+    <!-- Modal do Mapa -->
+    <RouteMapViewer
+      :is-open="showMapViewer"
+      :route-id="selectedRoute?.id || null"
+      :route-code="selectedRoute?.code || 'N/A'"
+      :origin="selectedRoute?.origin || 'N/A'"
+      :destination="selectedRoute?.destination || 'N/A'"
+      @close="closeMapViewer"
+    />
   </div>
 </template>
 
@@ -184,6 +220,7 @@ import { useRoute, useRouter } from '#app'
 
 interface RouteInfo {
   id: string
+  code?: string
   state?: string
   city?: string
   origin?: string
@@ -202,6 +239,8 @@ const schedules = ref<Array<ScheduleInfo>>([])
 const routes = ref<Array<RouteInfo>>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const showMapViewer = ref(false)
+const selectedRoute = ref<RouteInfo | null>(null)
 
 async function loadRoutes() {
   try {
@@ -316,5 +355,18 @@ function formatTimes(times: string[] | string | null | undefined): string {
   } catch { 
     return '-'
   }
+}
+
+function openMapViewer(routeId: string) {
+  const schedule = schedules.value.find(s => s.route?.id === routeId)
+  if (schedule?.route) {
+    selectedRoute.value = schedule.route
+    showMapViewer.value = true
+  }
+}
+
+function closeMapViewer() {
+  showMapViewer.value = false
+  selectedRoute.value = null
 }
 </script>
