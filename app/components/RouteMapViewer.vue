@@ -221,7 +221,11 @@ const initMap = async () => {
             .addTo(map!)
 
           // Popup com nome da parada
-          const popup = new maptilerSdk.Popup({ offset: 25 })
+          const popup = new maptilerSdk.Popup({ 
+            offset: 25,
+            closeButton: false,
+            className: 'route-stop-popup'
+          })
             .setText(stop.name)
           
           marker.setPopup(popup)
@@ -287,12 +291,32 @@ onUnmounted(() => {
 
 <style scoped>
 :deep(.maplibregl-popup-content) {
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  background-color: white;
+  color: rgb(24 24 27);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid rgb(228 228 231);
 }
 
 .dark :deep(.maplibregl-popup-content) {
   background-color: rgb(39 39 42);
-  color: white;
+  color: rgb(250 250 250);
+  border-color: rgb(63 63 70);
+}
+
+:deep(.maplibregl-popup-tip) {
+  border-top-color: white;
+}
+
+.dark :deep(.maplibregl-popup-tip) {
+  border-top-color: rgb(39 39 42);
+}
+
+:deep(.route-stop-popup .maplibregl-popup-content) {
+  min-width: 120px;
+  text-align: center;
 }
 </style>

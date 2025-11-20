@@ -456,22 +456,25 @@ const showStopPopup = (stop: any, marker: maptilerSdk.Marker) => {
   const popupContent = document.createElement('div')
   popupContent.className = 'stop-popup'
   popupContent.innerHTML = `
-    <div style="padding: 8px; min-width: 200px;">
+    <div style="padding: 12px; min-width: 200px;">
       <input 
         type="text" 
         value="${stop.name}" 
         id="stop-name-input"
-        style="width: 100%; padding: 6px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px;"
+        class="stop-name-input"
+        style="width: 100%; padding: 8px 10px; margin-bottom: 10px; border: 1px solid rgb(228 228 231); border-radius: 0.375rem; font-size: 0.875rem; outline: none;"
       />
       <button 
         id="save-stop-name"
-        style="width: 100%; padding: 6px; margin-bottom: 4px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;"
+        class="popup-btn popup-btn-primary"
+        style="width: 100%; padding: 8px 12px; margin-bottom: 6px; background: rgb(59 130 246); color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;"
       >
         Salvar Nome
       </button>
       <button 
         id="remove-stop"
-        style="width: 100%; padding: 6px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;"
+        class="popup-btn popup-btn-danger"
+        style="width: 100%; padding: 8px 12px; background: rgb(239 68 68); color: white; border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem; font-weight: 500;"
       >
         Remover Parada
       </button>
@@ -626,16 +629,60 @@ onUnmounted(() => {
 
 :deep(.maplibregl-popup-content) {
   padding: 0;
-  border-radius: 8px;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  background-color: white;
+  border: 1px solid rgb(228 228 231);
 }
 
 :deep(.maplibregl-popup-close-button) {
   font-size: 20px;
   padding: 4px 8px;
+  color: rgb(113 113 122);
+}
+
+:deep(.maplibregl-popup-close-button):hover {
+  color: rgb(39 39 42);
 }
 
 .dark :deep(.maplibregl-popup-content) {
   background-color: rgb(39 39 42);
-  color: white;
+  color: rgb(250 250 250);
+  border-color: rgb(63 63 70);
+}
+
+.dark :deep(.maplibregl-popup-close-button) {
+  color: rgb(161 161 170);
+}
+
+.dark :deep(.maplibregl-popup-close-button):hover {
+  color: rgb(250 250 250);
+}
+
+:deep(.maplibregl-popup-tip) {
+  border-top-color: white;
+}
+
+.dark :deep(.maplibregl-popup-tip) {
+  border-top-color: rgb(39 39 42);
+}
+
+:deep(.stop-name-input) {
+  background-color: white;
+  color: rgb(24 24 27);
+}
+
+.dark :deep(.stop-name-input) {
+  background-color: rgb(24 24 27);
+  color: rgb(250 250 250);
+  border-color: rgb(63 63 70);
+}
+
+:deep(.popup-btn-primary):hover {
+  background-color: rgb(37 99 235);
+}
+
+:deep(.popup-btn-danger):hover {
+  background-color: rgb(220 38 38);
 }
 </style>
