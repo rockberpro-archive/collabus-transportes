@@ -9,7 +9,7 @@
             {{ route?.code || 'Sem código' }} - {{ route?.origin }} → {{ route?.destination }}
           </p>
         </div>
-        <UPopover v-if="stops.length > 0" v-model:open="showHeaderPopover" :content="{ align: 'end' }">
+        <UPopover v-if="hasChanges" v-model:open="showHeaderPopover" :content="{ align: 'end' }">
           <UButton
             icon="i-lucide-x"
             variant="ghost"
@@ -113,7 +113,7 @@
         </div>
         
         <div class="flex gap-2 w-full sm:w-auto">
-          <UPopover v-if="stops.length > 0" v-model:open="showFooterPopover" :content="{ align: 'end', side: 'top' }">
+          <UPopover v-if="hasChanges" v-model:open="showFooterPopover" :content="{ align: 'end', side: 'top' }">
             <UButton
               variant="ghost"
               class="flex-1 sm:flex-initial"
@@ -221,6 +221,7 @@ const saving = ref(false)
 const loadingRoute = ref(false)
 const showHeaderPopover = ref(false)
 const showFooterPopover = ref(false)
+const originalStops = ref<Array<{ id: string; name: string; lat: number; lng: number; order: number }>>([])
 
 let map: maptilerSdk.Map | null = null
 let markers: maptilerSdk.Marker[] = []
@@ -229,6 +230,31 @@ let popupInstance: maptilerSdk.Popup | null = null
 
 const totalDistance = computed(() => {
   return actualDistance.value
+})
+
+const hasChanges = computed(() => {
+  // Se não tem paradas originais mas tem paradas atuais, houve mudança
+  if (originalStops.value.length === 0 && stops.value.length > 0) {
+    return true
+  }
+  
+  // Se a quantidade de paradas mudou, houve mudança
+  if (originalStops.value.length !== stops.value.length) {
+    return true
+  }
+  
+  // Comparar cada parada
+  return stops.value.some((stop, index) => {
+    const original = originalStops.value[index]
+    if (!original) return true
+    
+    return (
+      stop.name !== original.name ||
+      Math.abs(stop.lat - original.lat) > 0.000001 || // Pequena tolerância para float
+      Math.abs(stop.lng - original.lng) > 0.000001 ||
+      stop.order !== original.order
+    )
+  })
 })
 
 const formatDistance = (meters: number) => {
@@ -395,13 +421,17 @@ const initMap = async () => {
       
       const data = await fetchRouteStops(props.route.id)
       if (data.stops && data.stops.length > 0) {
-        stops.value = data.stops.map(stop => ({
+        const loadedStops = data.stops.map(stop => ({
           id: stop.id,
           name: stop.name,
           lat: stop.latitude,
           lng: stop.longitude,
           order: stop.order,
         }))
+        
+        stops.value = loadedStops
+        // Salvar cópia dos dados originais para detectar mudanças
+        originalStops.value = JSON.parse(JSON.stringify(loadedStops))
         
         // Se já tiver geoJson salvo, usar ele
         if (data.geoJson && data.geoJson.coordinates && data.geoJson.coordinates.length > 0) {
@@ -699,6 +729,7 @@ watch(() => props.isOpen, (newValue) => {
       map = null
     }
     stops.value = []
+    originalStops.value = []
     routeGeometry.value = []
     actualDistance.value = 0
   }
