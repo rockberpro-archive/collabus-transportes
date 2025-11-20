@@ -1,8 +1,8 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-0 sm:p-4" @click="handleCancel">
-    <div class="w-full h-full sm:max-w-[95vw] sm:max-h-[95vh] sm:rounded-lg overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl" @click.stop>
+  <div v-if="isOpen" class="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-0 sm:p-4" @click="handleCancel">
+    <div class="w-full h-full sm:max-w-[95vw] sm:max-h-[95vh] sm:rounded-lg overflow-hidden bg-white dark:bg-zinc-900 shadow-2xl flex flex-col" @click.stop>
       <!-- Header -->
-      <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-800">
+      <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-800 shrink-0">
         <div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Plotar Rota</h3>
           <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -18,7 +18,7 @@
       </div>
 
       <!-- Map Container -->
-      <div class="relative" :style="{ height: mapHeight }">
+      <div class="relative flex-1 overflow-hidden">
         <div ref="mapContainer" class="w-full h-full"></div>
 
         <!-- Floating Instructions Panel -->
@@ -31,6 +31,7 @@
                 <li>Clique no mapa para adicionar pontos de parada</li>
                 <li>Arraste os marcadores para reposicionar</li>
                 <li>Clique no marcador para editar o nome ou remover</li>
+                <li class="font-semibold text-primary-600 dark:text-primary-400">Use o botão "Salvar Rota" no rodapé para salvar</li>
               </ol>
             </div>
           </div>
@@ -54,7 +55,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="flex flex-col sm:flex-row justify-between items-center gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-800">
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-3 p-4 pb-safe border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-zinc-800 shrink-0">
         <p v-if="stops.length < 2" class="text-sm text-amber-600 dark:text-amber-400 flex items-center gap-2">
           <UIcon name="i-lucide-alert-triangle" />
           Adicione pelo menos 2 paradas para salvar
@@ -68,15 +69,16 @@
             variant="ghost"
             class="flex-1 sm:flex-initial"
             @click="handleCancel"
-            :disabled="saving"
+            :disabled="saving || loadingRoute"
           >
             Cancelar
           </UButton>
           <UButton
             :loading="saving"
-            :disabled="stops.length < 2"
+            :disabled="stops.length < 2 || loadingRoute"
             class="flex-1 sm:flex-initial"
             @click="handleSave"
+            icon="i-lucide-save"
           >
             Salvar Rota
           </UButton>
@@ -124,10 +126,6 @@ let map: maptilerSdk.Map | null = null
 let markers: maptilerSdk.Marker[] = []
 let lineSource: any = null
 let popupInstance: maptilerSdk.Popup | null = null
-
-const mapHeight = computed(() => {
-  return 'calc(100vh - 180px)'
-})
 
 const totalDistance = computed(() => {
   return actualDistance.value
@@ -522,7 +520,7 @@ const fitBounds = () => {
 
 const handleCancel = () => {
   if (stops.value.length > 0) {
-    const confirmed = confirm('Tem certeza que deseja cancelar? As alterações não salvas serão perdidas.')
+    const confirmed = confirm('Tem certeza que deseja fechar? Para salvar a rota, clique no botão "Salvar Rota" no rodapé.')
     if (!confirmed) return
   }
   
